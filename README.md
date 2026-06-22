@@ -1,10 +1,5 @@
 # 🧠 30 Days of Deep Learning from Scratch
 
-> **Auteur** : Programme conçu par un expert en Deep Learning & professeur universitaire senior  
-> **Niveau** : Débutant → Intermédiaire → Avancé  
-> **Prérequis** : Python de base, notions de mathématiques (lycée)  
-> **Outils** : Python 3.10+, NumPy, Matplotlib, puis PyTorch
-
 ---
 
 ## 🎯 Objectif Global
