@@ -2,9 +2,7 @@
 
 ---
 
-## 🎯 Objectif Global
-
-À la fin de ces 30 jours, vous serez capable de :
+##  Objectifs Globaux :
 
 1. **Comprendre** les fondements mathématiques du Deep Learning (dérivées, gradient, optimisation)
 2. **Implémenter from scratch** un réseau de neurones multicouche complet avec NumPy
