@@ -618,3 +618,513 @@ plt.show()
 | Trop grand (> 1.0) | Oscillation ou divergence ! |
 
 ---
+
+## 📅 Jour 5 — Le Perceptron : Premier Modèle d'Apprentissage
+
+### 📚 Concept Théorique
+
+Le **perceptron** est le premier algorithme d'apprentissage (Rosenblatt, 1958). C'est un neurone qui **apprend automatiquement ses poids** à partir des données.
+
+L'idée : on montre des exemples au perceptron, et à chaque erreur, il ajuste ses poids pour corriger sa prédiction.
+
+### 🧠 Intuition
+
+Le perceptron est comme un **étudiant** :
+1. Il fait une prédiction (examen)
+2. On lui dit s'il a bon ou faux (correction)
+3. S'il a faux, il ajuste sa compréhension (mise à jour des poids)
+4. On recommence jusqu'à ce qu'il ait tout bon
+
+### 🧮 Formules Essentielles
+
+**Prédiction :**
+$$\hat{y} = \text{step}(\mathbf{w}^T \mathbf{x} + b)$$
+
+**Règle de mise à jour du Perceptron :**
+$$w_i \leftarrow w_i + \alpha \cdot (y - \hat{y}) \cdot x_i$$
+$$b \leftarrow b + \alpha \cdot (y - \hat{y})$$
+
+Où $(y - \hat{y})$ est l'erreur.
+
+### 💻 Implémentation From Scratch
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ============================================================
+# JOUR 5 : Le Perceptron
+# ============================================================
+
+class Perceptron:
+    """
+    Perceptron : le premier modèle d'apprentissage supervisé.
+    Peut résoudre des problèmes linéairement séparables.
+    """
+
+    def __init__(self, n_features, learning_rate=0.1):
+        """
+        Args:
+            n_features: nombre de caractéristiques en entrée
+            learning_rate: vitesse d'apprentissage (alpha)
+        """
+        self.weights = np.zeros(n_features)  # poids initialisés à 0
+        self.bias = 0.0
+        self.lr = learning_rate
+
+    def predict(self, x):
+        """
+        Fait une prédiction pour un seul exemple.
+        
+        Args:
+            x: vecteur de caractéristiques
+        
+        Returns:
+            0 ou 1
+        """
+        z = np.dot(self.weights, x) + self.bias
+        return 1 if z > 0 else 0
+
+    def train(self, X, y, n_epochs=100):
+        """
+        Entraîne le perceptron sur les données.
+        
+        Args:
+            X: matrice de données (n_samples, n_features)
+            y: vecteur de labels (n_samples,)
+            n_epochs: nombre de passages sur les données
+        
+        Returns:
+            Liste des erreurs par époque
+        """
+        errors_per_epoch = []
+
+        for epoch in range(n_epochs):
+            errors = 0
+            for xi, yi in zip(X, y):
+                # 1. Faire une prédiction
+                prediction = self.predict(xi)
+                
+                # 2. Calculer l'erreur
+                error = yi - prediction
+                
+                # 3. Mettre à jour les poids SI erreur != 0
+                if error != 0:
+                    self.weights += self.lr * error * xi
+                    self.bias += self.lr * error
+                    errors += 1
+
+            errors_per_epoch.append(errors)
+
+            # Afficher la progression
+            if epoch < 5 or epoch % 10 == 0:
+                print(f"  Époque {epoch+1:>3} : {errors} erreur(s)")
+
+            # Arrêt anticipé si aucune erreur
+            if errors == 0:
+                print(f"\n  ✅ Convergence atteinte à l'époque {epoch + 1} !")
+                break
+
+        return errors_per_epoch
+
+# --- Exemple 1 : Porte logique AND ---
+print("=== Perceptron pour la porte AND ===\n")
+
+X_and = np.array([
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [1, 1],
+])
+y_and = np.array([0, 0, 0, 1])  # AND : 1 seulement si les deux sont 1
+
+perceptron_and = Perceptron(n_features=2, learning_rate=0.1)
+errors_and = perceptron_and.train(X_and, y_and, n_epochs=100)
+
+print(f"\nPoids finaux : {perceptron_and.weights}")
+print(f"Biais final  : {perceptron_and.bias}")
+print("\nTest :")
+for xi, yi in zip(X_and, y_and):
+    pred = perceptron_and.predict(xi)
+    status = "✅" if pred == yi else "❌"
+    print(f"  {xi} → prédit: {pred}, attendu: {yi} {status}")
+
+# --- Exemple 2 : Porte logique OR ---
+print("\n=== Perceptron pour la porte OR ===\n")
+
+y_or = np.array([0, 1, 1, 1])
+
+perceptron_or = Perceptron(n_features=2, learning_rate=0.1)
+errors_or = perceptron_or.train(X_and, y_or, n_epochs=100)
+
+print(f"\nTest :")
+for xi, yi in zip(X_and, y_or):
+    pred = perceptron_or.predict(xi)
+    status = "✅" if pred == yi else "❌"
+    print(f"  {xi} → prédit: {pred}, attendu: {yi} {status}")
+
+# --- Exemple 3 : Le problème XOR (impossible !) ---
+print("\n=== Perceptron pour XOR (ça ne marchera PAS) ===\n")
+
+y_xor = np.array([0, 1, 1, 0])
+
+perceptron_xor = Perceptron(n_features=2, learning_rate=0.1)
+errors_xor = perceptron_xor.train(X_and, y_xor, n_epochs=100)
+
+print(f"\nTest :")
+for xi, yi in zip(X_and, y_xor):
+    pred = perceptron_xor.predict(xi)
+    status = "✅" if pred == yi else "❌"
+    print(f"  {xi} → prédit: {pred}, attendu: {yi} {status}")
+
+print("\n💡 Le XOR n'est PAS linéairement séparable.")
+print("   → On a besoin de PLUSIEURS couches (réseau profond) !")
+
+# --- Visualisation des frontières de décision ---
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+titles = ["AND", "OR", "XOR (impossible)"]
+perceptrons = [perceptron_and, perceptron_or, perceptron_xor]
+labels = [y_and, y_or, y_xor]
+
+for ax, title, perc, y in zip(axes, titles, perceptrons, labels):
+    xx, yy = np.meshgrid(np.linspace(-0.5, 1.5, 200), np.linspace(-0.5, 1.5, 200))
+    Z = np.array([perc.predict(np.array([a, b]))
+                  for a, b in zip(xx.ravel(), yy.ravel())])
+    Z = Z.reshape(xx.shape)
+    
+    ax.contourf(xx, yy, Z, levels=[-0.5, 0.5, 1.5], colors=['#FFCCCC', '#CCCCFF'], alpha=0.5)
+    ax.contour(xx, yy, Z, levels=[0.5], colors='black', linewidths=2)
+    
+    for xi, yi in zip(X_and, y):
+        color = 'blue' if yi == 1 else 'red'
+        marker = 'o' if yi == 1 else 'x'
+        ax.plot(xi[0], xi[1], marker, color=color, markersize=15, markeredgewidth=3)
+    
+    ax.set_title(title, fontweight='bold', fontsize=14)
+    ax.set_xlabel("x₁")
+    ax.set_ylabel("x₂")
+    ax.grid(True, alpha=0.3)
+
+plt.suptitle("Frontières de Décision du Perceptron", fontsize=16, fontweight='bold')
+plt.tight_layout()
+plt.savefig("perceptron_decision_boundaries.png", dpi=150)
+plt.show()
+```
+
+### 📌 Ce qu'il faut retenir du Jour 5
+
+> **Le perceptron est puissant mais limité** : il ne peut résoudre que les problèmes **linéairement séparables** (séparables par une droite). Le XOR montre qu'un seul neurone ne suffit pas.
+>
+> **Solution** → Empiler plusieurs couches de neurones = **réseau de neurones** ! C'est ce qu'on fera à partir du Jour 11.
+
+---
+
+---
+
+# 📅 SEMAINE 2 : MÉCANIQUE (Jours 6–10)
+
+---
+
+## 📅 Jour 6 — La Régression Logistique
+
+### 📚 Concept Théorique
+
+La **régression logistique** est le perceptron amélioré. Au lieu de sortir brutalement 0 ou 1, elle produit une **probabilité** entre 0 et 1 grâce à la fonction sigmoid.
+
+C'est le modèle le plus fondamental pour la **classification binaire** et la base de tous les réseaux de neurones.
+
+### 🧠 Intuition
+
+Si le perceptron est un interrupteur (ON/OFF), la régression logistique est un **variateur** : elle nous dit "je suis sûr à 87% que c'est un chat" au lieu de juste "c'est un chat".
+
+### 🧮 Formules Essentielles
+
+**Modèle :**
+$$\hat{y} = \sigma(\mathbf{w}^T \mathbf{x} + b) = \frac{1}{1 + e^{-(\mathbf{w}^T \mathbf{x} + b)}}$$
+
+**Loss (Binary Cross-Entropy) :**
+$$\mathcal{L} = -\frac{1}{m} \sum_{i=1}^{m} \left[ y^{(i)} \log(\hat{y}^{(i)}) + (1 - y^{(i)}) \log(1 - \hat{y}^{(i)}) \right]$$
+
+**Gradients :**
+$$\frac{\partial \mathcal{L}}{\partial w_j} = \frac{1}{m} \sum_{i=1}^{m} (\hat{y}^{(i)} - y^{(i)}) \cdot x_j^{(i)}$$
+$$\frac{\partial \mathcal{L}}{\partial b} = \frac{1}{m} \sum_{i=1}^{m} (\hat{y}^{(i)} - y^{(i)})$$
+
+### 💻 Implémentation From Scratch
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ============================================================
+# JOUR 6 : Régression Logistique from Scratch
+# ============================================================
+
+class LogisticRegression:
+    """
+    Régression logistique : classification binaire avec probabilités.
+    C'est un neurone avec sigmoid + cross-entropy loss.
+    """
+
+    def __init__(self, n_features, learning_rate=0.1):
+        self.weights = np.zeros(n_features)
+        self.bias = 0.0
+        self.lr = learning_rate
+        self.losses = []
+
+    def sigmoid(self, z):
+        """Fonction sigmoid : écrase z entre 0 et 1."""
+        return 1 / (1 + np.exp(-np.clip(z, -500, 500)))
+
+    def forward(self, X):
+        """
+        Propagation avant : calcule les probabilités.
+        
+        Args:
+            X: matrice (m, n) — m exemples, n features
+        
+        Returns:
+            Vecteur de probabilités (m,)
+        """
+        z = X @ self.weights + self.bias  # @ = produit matriciel
+        return self.sigmoid(z)
+
+    def compute_loss(self, y_true, y_pred):
+        """Calcule la binary cross-entropy loss."""
+        epsilon = 1e-15
+        y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+        return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+
+    def train(self, X, y, n_epochs=1000, verbose=True):
+        """
+        Entraîne le modèle par descente de gradient.
+        """
+        m = len(y)
+
+        for epoch in range(n_epochs):
+            # --- Forward pass ---
+            y_pred = self.forward(X)
+
+            # --- Calcul de la loss ---
+            loss = self.compute_loss(y, y_pred)
+            self.losses.append(loss)
+
+            # --- Calcul des gradients ---
+            error = y_pred - y
+            dw = (1 / m) * (X.T @ error)
+            db = (1 / m) * np.sum(error)
+
+            # --- Mise à jour des paramètres ---
+            self.weights -= self.lr * dw
+            self.bias -= self.lr * db
+
+            # --- Affichage ---
+            if verbose and (epoch < 5 or epoch % 200 == 0):
+                accuracy = np.mean((y_pred >= 0.5) == y)
+                print(f"  Époque {epoch+1:>4} : loss = {loss:.4f}, accuracy = {accuracy:.2%}")
+
+    def predict(self, X):
+        """Retourne les prédictions (0 ou 1)."""
+        return (self.forward(X) >= 0.5).astype(int)
+
+    def predict_proba(self, X):
+        """Retourne les probabilités."""
+        return self.forward(X)
+
+
+# --- Créer un dataset synthétique ---
+np.random.seed(42)
+
+# Classe 0 : centrée autour de (2, 2)
+X0 = np.random.randn(100, 2) + np.array([2, 2])
+# Classe 1 : centrée autour de (6, 6)
+X1 = np.random.randn(100, 2) + np.array([6, 6])
+
+X = np.vstack([X0, X1])
+y = np.hstack([np.zeros(100), np.ones(100)])
+
+# Mélanger les données
+shuffle_idx = np.random.permutation(len(y))
+X, y = X[shuffle_idx], y[shuffle_idx]
+
+# --- Entraîner ---
+print("=== Régression Logistique ===\n")
+model = LogisticRegression(n_features=2, learning_rate=0.1)
+model.train(X, y, n_epochs=1000)
+
+# --- Résultats ---
+predictions = model.predict(X)
+accuracy = np.mean(predictions == y)
+print(f"\nAccuracy finale : {accuracy:.2%}")
+
+# --- Visualisation ---
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+# Plot 1 : Frontière de décision
+xx, yy = np.meshgrid(np.linspace(-1, 9, 200), np.linspace(-1, 9, 200))
+grid = np.c_[xx.ravel(), yy.ravel()]
+probs = model.predict_proba(grid).reshape(xx.shape)
+
+axes[0].contourf(xx, yy, probs, levels=50, cmap='RdBu_r', alpha=0.6)
+axes[0].contour(xx, yy, probs, levels=[0.5], colors='black', linewidths=2)
+axes[0].scatter(X[y == 0][:, 0], X[y == 0][:, 1], c='red', label='Classe 0', edgecolors='black')
+axes[0].scatter(X[y == 1][:, 0], X[y == 1][:, 1], c='blue', label='Classe 1', edgecolors='black')
+axes[0].set_title("Frontière de Décision", fontweight='bold')
+axes[0].legend()
+axes[0].grid(True, alpha=0.3)
+
+# Plot 2 : Courbe de loss
+axes[1].plot(model.losses, 'g-', linewidth=2)
+axes[1].set_title("Convergence de la Loss", fontweight='bold')
+axes[1].set_xlabel("Époque")
+axes[1].set_ylabel("Binary Cross-Entropy")
+axes[1].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.savefig("logistic_regression.png", dpi=150)
+plt.show()
+```
+
+---
+
+## 📅 Jour 7 — Backpropagation : Le Cœur de l'Apprentissage
+
+### 📚 Concept Théorique
+
+La **backpropagation** (rétropropagation) est l'algorithme qui permet de calculer **les gradients de la loss par rapport à chaque poids** du réseau. C'est une application récursive de la **règle de la chaîne** (chain rule).
+
+### 🧠 Intuition
+
+Pensez à une **chaîne de dominos** :
+
+```
+Entrée → Neurone 1 → Neurone 2 → ... → Sortie → Loss
+```
+
+La backpropagation remonte cette chaîne en sens inverse pour répondre à la question : "**Si je change un peu le poids $w$ dans le neurone 1, de combien change la loss ?**"
+
+### 🧮 Formules Essentielles
+
+**Règle de la chaîne :**
+
+Si $\mathcal{L}$ dépend de $z$ qui dépend de $w$ :
+
+$$\frac{\partial \mathcal{L}}{\partial w} = \frac{\partial \mathcal{L}}{\partial z} \cdot \frac{\partial z}{\partial w}$$
+
+**Pour un neurone avec sigmoid :**
+
+$$z = wx + b$$
+$$a = \sigma(z)$$
+$$\mathcal{L} = -(y \log(a) + (1-y) \log(1-a))$$
+
+**Les gradients (en remontant) :**
+
+$$\frac{\partial \mathcal{L}}{\partial a} = -\frac{y}{a} + \frac{1-y}{1-a}$$
+
+$$\frac{\partial \mathcal{L}}{\partial z} = a - y$$
+
+$$\frac{\partial \mathcal{L}}{\partial w} = (a - y) \cdot x$$
+
+$$\frac{\partial \mathcal{L}}{\partial b} = a - y$$
+
+### 💻 Implémentation From Scratch
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 7 : Backpropagation — pas à pas
+# ============================================================
+
+# Réseau à 2 couches : 2 entrées → 2 neurones cachés → 1 sortie
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-np.clip(z, -500, 500)))
+
+def sigmoid_derivative(a):
+    """Dérivée de sigmoid en fonction de la SORTIE a (pas de z)."""
+    return a * (1 - a)
+
+# Données XOR
+X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+y = np.array([[0], [1], [1], [0]])
+
+# Initialisation des poids
+np.random.seed(42)
+W1 = np.random.randn(2, 2) * 0.5
+b1 = np.zeros((1, 2))
+W2 = np.random.randn(2, 1) * 0.5
+b2 = np.zeros((1, 1))
+
+learning_rate = 1.0
+losses = []
+
+print("=== Backpropagation sur XOR ===\n")
+
+for epoch in range(10000):
+    # ========== FORWARD PASS ==========
+    z1 = X @ W1 + b1
+    a1 = sigmoid(z1)
+    z2 = a1 @ W2 + b2
+    a2 = sigmoid(z2)
+    
+    # Loss (MSE)
+    loss = np.mean((y - a2) ** 2)
+    losses.append(loss)
+    
+    # ========== BACKWARD PASS ==========
+    m = X.shape[0]
+    
+    # Gradient de la loss par rapport à a2
+    dL_da2 = (2 / m) * (a2 - y)
+    
+    # Couche 2 : remonter à travers sigmoid
+    da2_dz2 = sigmoid_derivative(a2)
+    dL_dz2 = dL_da2 * da2_dz2
+    
+    # Gradients des poids couche 2
+    dL_dW2 = a1.T @ dL_dz2
+    dL_db2 = np.sum(dL_dz2, axis=0, keepdims=True)
+    
+    # Propager l'erreur vers la couche 1
+    dL_da1 = dL_dz2 @ W2.T
+    da1_dz1 = sigmoid_derivative(a1)
+    dL_dz1 = dL_da1 * da1_dz1
+    
+    # Gradients des poids couche 1
+    dL_dW1 = X.T @ dL_dz1
+    dL_db1 = np.sum(dL_dz1, axis=0, keepdims=True)
+    
+    # ========== MISE À JOUR ==========
+    W2 -= learning_rate * dL_dW2
+    b2 -= learning_rate * dL_db2
+    W1 -= learning_rate * dL_dW1
+    b1 -= learning_rate * dL_db1
+    
+    if epoch < 5 or epoch % 2000 == 0:
+        predictions = (a2 > 0.5).astype(int)
+        accuracy = np.mean(predictions == y)
+        print(f"  Époque {epoch+1:>5} : loss = {loss:.6f}, accuracy = {accuracy:.0%}")
+
+# Test final
+print("\n=== Résultat final ===")
+z1 = X @ W1 + b1
+a1 = sigmoid(z1)
+z2 = a1 @ W2 + b2
+a2 = sigmoid(z2)
+
+for i in range(4):
+    print(f"  {X[i]} → prob = {a2[i, 0]:.4f}, prédit = {int(a2[i, 0] > 0.5)}, attendu = {y[i, 0]}")
+
+print("\n🎉 XOR résolu avec la backpropagation et 2 couches !")
+```
+
+### 📌 Résumé de la Backpropagation
+
+```
+Forward:  X → z1 → a1 → z2 → a2 → Loss
+Backward: X ← dz1 ← da1 ← dz2 ← da2 ← dLoss
+```
+
+> La backpropagation n'est **rien d'autre** que la règle de la chaîne appliquée systématiquement en sens inverse.
+
+---
