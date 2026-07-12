@@ -1128,3 +1128,132 @@ Backward: X ← dz1 ← da1 ← dz2 ← da2 ← dLoss
 > La backpropagation n'est **rien d'autre** que la règle de la chaîne appliquée systématiquement en sens inverse.
 
 ---
+
+## 📅 Jour 8 — Graphe de Calcul et Autograd Simplifié
+
+### 📚 Concept Théorique
+
+Aujourd'hui, nous allons construire un **graphe de calcul** (computation graph), la structure qu'utilisent PyTorch et TensorFlow en interne. Chaque opération est un noeud, et les gradients sont propagés automatiquement.
+
+### 🧠 Intuition
+
+Un graphe de calcul est comme une **recette de cuisine inversée**. Si le plat est trop salé (loss élevée), vous remontez chaque étape pour savoir **quel ingrédient ajuster et de combien**.
+
+### 💻 Implémentation From Scratch
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 8 : Graphe de Calcul et Autograd simplifié
+# ============================================================
+
+class Value:
+    """
+    Un noeud dans le graphe de calcul.
+    Stocke une valeur et son gradient.
+    Inspiré de micrograd d'Andrej Karpathy.
+    """
+
+    def __init__(self, data, children=(), operation=''):
+        self.data = data
+        self.grad = 0.0
+        self._backward = lambda: None
+        self._children = set(children)
+        self._op = operation
+
+    def __repr__(self):
+        return f"Value(data={self.data:.4f}, grad={self.grad:.4f})"
+
+    def __add__(self, other):
+        """Addition : c = a + b → dc/da = 1, dc/db = 1"""
+        other = other if isinstance(other, Value) else Value(other)
+        result = Value(self.data + other.data, (self, other), '+')
+        
+        def _backward():
+            self.grad += result.grad
+            other.grad += result.grad
+        result._backward = _backward
+        
+        return result
+
+    def __mul__(self, other):
+        """Multiplication : c = a * b → dc/da = b, dc/db = a"""
+        other = other if isinstance(other, Value) else Value(other)
+        result = Value(self.data * other.data, (self, other), '*')
+        
+        def _backward():
+            self.grad += other.data * result.grad
+            other.grad += self.data * result.grad
+        result._backward = _backward
+        
+        return result
+
+    def __neg__(self):
+        return self * -1
+
+    def __sub__(self, other):
+        return self + (-other)
+
+    def __pow__(self, n):
+        """Puissance : c = a^n → dc/da = n * a^(n-1)"""
+        result = Value(self.data ** n, (self,), f'**{n}')
+        
+        def _backward():
+            self.grad += n * (self.data ** (n - 1)) * result.grad
+        result._backward = _backward
+        
+        return result
+
+    def sigmoid(self):
+        """Sigmoid : σ(a) = 1 / (1 + e^(-a))"""
+        s = 1 / (1 + np.exp(-self.data))
+        result = Value(s, (self,), 'sigmoid')
+        
+        def _backward():
+            self.grad += s * (1 - s) * result.grad
+        result._backward = _backward
+        
+        return result
+
+    def backward(self):
+        """Lance la backpropagation (tri topologique)."""
+        topo_order = []
+        visited = set()
+        
+        def build_topo(node):
+            if node not in visited:
+                visited.add(node)
+                for child in node._children:
+                    build_topo(child)
+                topo_order.append(node)
+        
+        build_topo(self)
+        
+        self.grad = 1.0
+        for node in reversed(topo_order):
+            node._backward()
+
+
+# --- Démonstration ---
+print("=== Graphe de Calcul : Neurone avec Autograd ===\n")
+
+x1, x2 = Value(2.0), Value(3.0)
+w1, w2 = Value(-1.0), Value(0.5)
+b = Value(0.1)
+
+z = x1 * w1 + x2 * w2 + b
+a = z.sigmoid()
+y_true = Value(1.0)
+loss = (a - y_true) ** 2
+
+print(f"z    = {z.data:.4f}")
+print(f"a    = {a.data:.4f}")
+print(f"loss = {loss.data:.4f}")
+
+loss.backward()
+
+print(f"\ndL/dw1 = {w1.grad:.4f}")
+print(f"dL/dw2 = {w2.grad:.4f}")
+print(f"dL/db  = {b.grad:.4f}")
+```
