@@ -1378,3 +1378,83 @@ output = model.forward(X)
 for i in range(4):
     print(f"  {X[i]} → {output[i, 0]:.4f} (attendu: {y[i, 0]})")
 ```
+
+## 📅 Jour 10 — Mini-Batches et Métriques d'Évaluation
+
+### 📚 Concept Théorique
+
+En pratique, avec des millions d'exemples, on utilise des **mini-batches** : de petits sous-ensembles traités à chaque itération.
+
+### 🧮 Types de Descente de Gradient
+
+| Type | Taille du batch | Vitesse | Stabilité |
+|---|---|---|---|
+| Batch GD | m (toutes les données) | Lente | Très stable |
+| Stochastic GD (SGD) | 1 (un exemple) | Très rapide | Très bruyant |
+| Mini-batch GD | 32, 64, 128... | Bon compromis | Bon compromis |
+
+### 💻 Implémentation From Scratch
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 10 : Mini-Batch Training + Métriques
+# ============================================================
+
+def create_batches(X, y, batch_size=32, shuffle=True):
+    """Découpe les données en mini-batches."""
+    n_samples = len(y)
+    if shuffle:
+        indices = np.random.permutation(n_samples)
+        X, y = X[indices], y[indices]
+    for start in range(0, n_samples, batch_size):
+        end = min(start + batch_size, n_samples)
+        yield X[start:end], y[start:end]
+
+# --- Métriques d'évaluation ---
+def accuracy(y_true, y_pred):
+    predictions = (y_pred >= 0.5).astype(int)
+    return np.mean(predictions == y_true)
+
+def precision(y_true, y_pred):
+    predictions = (y_pred >= 0.5).astype(int)
+    tp = np.sum((predictions == 1) & (y_true == 1))
+    pp = np.sum(predictions == 1)
+    return tp / max(pp, 1)
+
+def recall(y_true, y_pred):
+    predictions = (y_pred >= 0.5).astype(int)
+    tp = np.sum((predictions == 1) & (y_true == 1))
+    ap = np.sum(y_true == 1)
+    return tp / max(ap, 1)
+
+def f1_score(y_true, y_pred):
+    p, r = precision(y_true, y_pred), recall(y_true, y_pred)
+    return 2 * p * r / max(p + r, 1e-10)
+
+# --- Démonstration des métriques ---
+print("=== Métriques d'Évaluation ===\n")
+y_ex = np.array([1, 1, 0, 0, 1, 1, 0, 1, 0, 0]).reshape(-1, 1)
+y_pred_ex = np.array([0.9, 0.8, 0.2, 0.3, 0.6, 0.4, 0.1, 0.7, 0.8, 0.2]).reshape(-1, 1)
+
+print(f"Accuracy  : {accuracy(y_ex, y_pred_ex):.2%}")
+print(f"Precision : {precision(y_ex, y_pred_ex):.2%}")
+print(f"Recall    : {recall(y_ex, y_pred_ex):.2%}")
+print(f"F1 Score  : {f1_score(y_ex, y_pred_ex):.2%}")
+```
+
+### 📌 Résumé Semaine 2
+
+> Vous savez maintenant :
+> - ✅ Construire un classifieur binaire (régression logistique)
+> - ✅ Implémenter la backpropagation pas à pas
+> - ✅ Construire un graphe de calcul (mini autograd)
+> - ✅ Architecturer un réseau modulaire avec des couches
+> - ✅ Entraîner avec des mini-batches et évaluer avec les métriques
+
+---
+
+---
+
+# 📅 SEMAINE 3 : CONSTRUCTION DU MLP (Jours 11–15)
