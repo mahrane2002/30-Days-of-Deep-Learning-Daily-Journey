@@ -1257,3 +1257,124 @@ print(f"\ndL/dw1 = {w1.grad:.4f}")
 print(f"dL/dw2 = {w2.grad:.4f}")
 print(f"dL/db  = {b.grad:.4f}")
 ```
+
+## 📅 Jour 9 — Architecture de Réseau Modulaire
+
+### 📚 Concept Théorique
+
+Restructurons notre code en une **architecture propre et réutilisable**. Chaque couche est un module avec `forward()` et `backward()`.
+
+### 🧠 Intuition
+
+Chaque couche est un **Lego** : elle a une interface standard (entrée → sortie) et peut être empilée avec d'autres. C'est exactement comme ça que fonctionnent PyTorch et TensorFlow.
+
+### 💻 Implémentation From Scratch
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 9 : Architecture de réseau modulaire
+# ============================================================
+
+class Layer:
+    """Classe de base pour toutes les couches."""
+    def forward(self, x):
+        raise NotImplementedError
+    def backward(self, grad_output):
+        raise NotImplementedError
+
+class Dense(Layer):
+    """Couche dense (fully connected)."""
+
+    def __init__(self, n_input, n_output):
+        # Xavier initialization
+        limit = np.sqrt(6 / (n_input + n_output))
+        self.W = np.random.uniform(-limit, limit, (n_input, n_output))
+        self.b = np.zeros((1, n_output))
+        self.input = None
+        self.dW = None
+        self.db = None
+
+    def forward(self, x):
+        self.input = x
+        return x @ self.W + self.b
+
+    def backward(self, grad_output):
+        self.dW = self.input.T @ grad_output
+        self.db = np.sum(grad_output, axis=0, keepdims=True)
+        return grad_output @ self.W.T
+
+class Sigmoid(Layer):
+    def forward(self, x):
+        self.output = 1 / (1 + np.exp(-np.clip(x, -500, 500)))
+        return self.output
+    def backward(self, grad_output):
+        return grad_output * self.output * (1 - self.output)
+
+class ReLU(Layer):
+    def forward(self, x):
+        self.input = x
+        return np.maximum(0, x)
+    def backward(self, grad_output):
+        return grad_output * (self.input > 0)
+
+class TanhLayer(Layer):
+    def forward(self, x):
+        self.output = np.tanh(x)
+        return self.output
+    def backward(self, grad_output):
+        return grad_output * (1 - self.output ** 2)
+
+class NeuralNetwork:
+    """Réseau de neurones séquentiel."""
+
+    def __init__(self, layers):
+        self.layers = layers
+        self.losses = []
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer.forward(x)
+        return x
+
+    def backward(self, grad):
+        for layer in reversed(self.layers):
+            grad = layer.backward(grad)
+
+    def update(self, learning_rate):
+        for layer in self.layers:
+            if isinstance(layer, Dense):
+                layer.W -= learning_rate * layer.dW
+                layer.b -= learning_rate * layer.db
+
+    def train(self, X, y, n_epochs=1000, learning_rate=0.1):
+        for epoch in range(n_epochs):
+            y_pred = self.forward(X)
+            loss = np.mean((y - y_pred) ** 2)
+            self.losses.append(loss)
+            
+            grad = (2 / len(y)) * (y_pred - y)
+            self.backward(grad)
+            self.update(learning_rate)
+            
+            if epoch < 5 or epoch % 1000 == 0:
+                accuracy = np.mean((y_pred > 0.5).astype(int) == y)
+                print(f"  Époque {epoch+1:>5} : loss = {loss:.6f}, accuracy = {accuracy:.0%}")
+
+# --- Test sur XOR ---
+print("=== Réseau Modulaire sur XOR ===\n")
+X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+y = np.array([[0], [1], [1], [0]])
+
+model = NeuralNetwork([
+    Dense(2, 4), TanhLayer(),
+    Dense(4, 1), Sigmoid(),
+])
+model.train(X, y, n_epochs=5000, learning_rate=1.0)
+
+print("\nPrédictions finales :")
+output = model.forward(X)
+for i in range(4):
+    print(f"  {X[i]} → {output[i, 0]:.4f} (attendu: {y[i, 0]})")
+```
