@@ -1458,3 +1458,170 @@ print(f"F1 Score  : {f1_score(y_ex, y_pred_ex):.2%}")
 ---
 
 # 📅 SEMAINE 3 : CONSTRUCTION DU MLP (Jours 11–15)
+
+
+
+
+
+## 📅 Jour 11 — Le Perceptron Multi-Couches (MLP) Complet
+
+### 📚 Concept Théorique
+
+Le **MLP** (Multi-Layer Perceptron) est le premier véritable **réseau de neurones profond**. Chaque couche apprend un **niveau d'abstraction** différent :
+- Couche 1 : détecte des motifs simples
+- Couche 2 : combine ces motifs en formes complexes
+- Couche 3 : reconnaît des concepts de haut niveau
+
+### 💻 Implémentation From Scratch — MLP Complet
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ============================================================
+# JOUR 11 : MLP Complet From Scratch
+# ============================================================
+
+class DenseLayer:
+    """Couche dense avec choix d'activation."""
+    
+    def __init__(self, n_in, n_out, activation='relu'):
+        if activation == 'relu':
+            self.W = np.random.randn(n_in, n_out) * np.sqrt(2.0 / n_in)
+        else:
+            self.W = np.random.randn(n_in, n_out) * np.sqrt(1.0 / n_in)
+        self.b = np.zeros((1, n_out))
+        self.activation = activation
+    
+    def _activate(self, z):
+        if self.activation == 'relu':
+            return np.maximum(0, z)
+        elif self.activation == 'sigmoid':
+            return 1 / (1 + np.exp(-np.clip(z, -500, 500)))
+        elif self.activation == 'tanh':
+            return np.tanh(z)
+        elif self.activation == 'none':
+            return z
+    
+    def _activate_derivative(self):
+        if self.activation == 'relu':
+            return (self.z > 0).astype(float)
+        elif self.activation == 'sigmoid':
+            return self.a * (1 - self.a)
+        elif self.activation == 'tanh':
+            return 1 - self.a ** 2
+        elif self.activation == 'none':
+            return np.ones_like(self.z)
+    
+    def forward(self, x):
+        self.input = x
+        self.z = x @ self.W + self.b
+        self.a = self._activate(self.z)
+        return self.a
+    
+    def backward(self, grad_output):
+        grad_z = grad_output * self._activate_derivative()
+        self.dW = self.input.T @ grad_z / len(grad_output)
+        self.db = np.mean(grad_z, axis=0, keepdims=True)
+        return grad_z @ self.W.T
+
+
+class MLP:
+    """Multi-Layer Perceptron complet."""
+    
+    def __init__(self, layer_sizes, activations, loss='bce'):
+        assert len(activations) == len(layer_sizes) - 1
+        self.layers = []
+        for i in range(len(layer_sizes) - 1):
+            self.layers.append(DenseLayer(layer_sizes[i], layer_sizes[i + 1], activations[i]))
+        self.loss_type = loss
+        self.history = {'train_loss': [], 'val_loss': [], 'train_acc': [], 'val_acc': []}
+    
+    def forward(self, X):
+        out = X
+        for layer in self.layers:
+            out = layer.forward(out)
+        return out
+    
+    def compute_loss(self, y_true, y_pred):
+        eps = 1e-15
+        if self.loss_type == 'bce':
+            y_pred = np.clip(y_pred, eps, 1 - eps)
+            return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+        elif self.loss_type == 'mse':
+            return np.mean((y_true - y_pred) ** 2)
+    
+    def compute_loss_gradient(self, y_true, y_pred):
+        eps = 1e-15
+        m = len(y_true)
+        if self.loss_type == 'bce':
+            y_pred = np.clip(y_pred, eps, 1 - eps)
+            return (-y_true / y_pred + (1 - y_true) / (1 - y_pred)) / m
+        elif self.loss_type == 'mse':
+            return 2 * (y_pred - y_true) / m
+    
+    def fit(self, X_train, y_train, X_val=None, y_val=None,
+            epochs=100, lr=0.01, batch_size=32, verbose=True):
+        n = len(X_train)
+        for epoch in range(epochs):
+            perm = np.random.permutation(n)
+            X_s, y_s = X_train[perm], y_train[perm]
+            
+            epoch_loss = 0
+            for start in range(0, n, batch_size):
+                end = min(start + batch_size, n)
+                X_b, y_b = X_s[start:end], y_s[start:end]
+                
+                y_pred = self.forward(X_b)
+                epoch_loss += self.compute_loss(y_b, y_pred)
+                
+                grad = self.compute_loss_gradient(y_b, y_pred)
+                for layer in reversed(self.layers):
+                    grad = layer.backward(grad)
+                
+                for layer in self.layers:
+                    layer.W -= lr * layer.dW
+                    layer.b -= lr * layer.db
+            
+            # Métriques
+            train_pred = self.forward(X_train)
+            train_acc = np.mean((train_pred >= 0.5) == y_train)
+            self.history['train_loss'].append(epoch_loss / (n // batch_size + 1))
+            self.history['train_acc'].append(train_acc)
+            
+            if X_val is not None:
+                val_pred = self.forward(X_val)
+                val_loss = self.compute_loss(y_val, val_pred)
+                val_acc = np.mean((val_pred >= 0.5) == y_val)
+                self.history['val_loss'].append(val_loss)
+                self.history['val_acc'].append(val_acc)
+            
+            if verbose and (epoch < 5 or (epoch + 1) % 50 == 0):
+                msg = f"  Époque {epoch+1:>4} : train_acc={train_acc:.2%}"
+                if X_val is not None:
+                    msg += f", val_acc={val_acc:.2%}"
+                print(msg)
+
+# --- Test : cercles concentriques ---
+def make_circles(n_samples=500, noise=0.1):
+    n = n_samples // 2
+    theta_in = np.random.uniform(0, 2*np.pi, n)
+    r_in = np.random.normal(1, noise, n)
+    X_in = np.column_stack([r_in*np.cos(theta_in), r_in*np.sin(theta_in)])
+    theta_out = np.random.uniform(0, 2*np.pi, n)
+    r_out = np.random.normal(3, noise, n)
+    X_out = np.column_stack([r_out*np.cos(theta_out), r_out*np.sin(theta_out)])
+    X = np.vstack([X_in, X_out])
+    y = np.vstack([np.zeros((n,1)), np.ones((n,1))])
+    perm = np.random.permutation(n_samples)
+    return X[perm], y[perm]
+
+np.random.seed(42)
+X, y = make_circles(600, noise=0.15)
+X_train, X_test = X[:480], X[480:]
+y_train, y_test = y[:480], y[480:]
+
+print("=== MLP sur Cercles Concentriques ===\n")
+model = MLP([2, 32, 16, 1], ['relu', 'relu', 'sigmoid'], loss='bce')
+model.fit(X_train, y_train, X_test, y_test, epochs=200, lr=0.05, batch_size=32)
+```
