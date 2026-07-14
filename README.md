@@ -1686,3 +1686,108 @@ visualize_activations('large_random', 'Grands poids → activations saturent')
 visualize_activations('xavier', 'Xavier ✅ (pour tanh/sigmoid)')
 visualize_activations('he', 'He ✅ (pour ReLU)')
 ```
+
+## 📅 Jour 13 — Softmax et Classification Multi-Classes
+
+### 📚 Concept Théorique
+
+Pour **N classes**, on utilise **softmax** qui transforme un vecteur de scores en une **distribution de probabilités**.
+
+### 🧮 Formules
+
+**Softmax :**
+$$\text{softmax}(z_i) = \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}$$
+
+**Categorical Cross-Entropy :**
+$$\mathcal{L} = -\sum_{i=1}^{K} y_i \log(\hat{y}_i)$$
+
+**Gradient combiné (softmax + CE) :**
+$$\frac{\partial \mathcal{L}}{\partial z_i} = \hat{y}_i - y_i$$
+
+### 💻 Implémentation From Scratch
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 13 : Softmax et Classification Multi-Classes
+# ============================================================
+
+def softmax(z):
+    """Softmax stable numériquement."""
+    exp_z = np.exp(z - np.max(z, axis=1, keepdims=True))
+    return exp_z / np.sum(exp_z, axis=1, keepdims=True)
+
+def cross_entropy_loss(y_true_onehot, y_pred):
+    eps = 1e-15
+    y_pred = np.clip(y_pred, eps, 1 - eps)
+    return -np.mean(np.sum(y_true_onehot * np.log(y_pred), axis=1))
+
+def one_hot_encode(y, n_classes):
+    one_hot = np.zeros((len(y), n_classes))
+    one_hot[np.arange(len(y)), y] = 1
+    return one_hot
+
+class MLPMultiClass:
+    """MLP pour classification multi-classes avec softmax."""
+    
+    def __init__(self, layer_sizes, lr=0.01):
+        self.layers = []
+        self.lr = lr
+        for i in range(len(layer_sizes) - 1):
+            W = np.random.randn(layer_sizes[i], layer_sizes[i+1]) * np.sqrt(2.0 / layer_sizes[i])
+            b = np.zeros((1, layer_sizes[i+1]))
+            self.layers.append({'W': W, 'b': b})
+    
+    def forward(self, X):
+        self.activations = [X]
+        self.z_values = []
+        out = X
+        for i, layer in enumerate(self.layers):
+            z = out @ layer['W'] + layer['b']
+            self.z_values.append(z)
+            out = np.maximum(0, z) if i < len(self.layers) - 1 else softmax(z)
+            self.activations.append(out)
+        return out
+    
+    def backward(self, y_onehot):
+        m = len(y_onehot)
+        delta = self.activations[-1] - y_onehot
+        grads = []
+        for i in range(len(self.layers) - 1, -1, -1):
+            dW = self.activations[i].T @ delta / m
+            db = np.mean(delta, axis=0, keepdims=True)
+            grads.insert(0, {'dW': dW, 'db': db})
+            if i > 0:
+                delta = delta @ self.layers[i]['W'].T
+                delta *= (self.z_values[i-1] > 0)
+        for i, grad in enumerate(grads):
+            self.layers[i]['W'] -= self.lr * grad['dW']
+            self.layers[i]['b'] -= self.lr * grad['db']
+    
+    def fit(self, X, y, epochs=500):
+        n_classes = len(np.unique(y))
+        y_onehot = one_hot_encode(y, n_classes)
+        for epoch in range(epochs):
+            y_pred = self.forward(X)
+            loss = cross_entropy_loss(y_onehot, y_pred)
+            self.backward(y_onehot)
+            if epoch % 100 == 0:
+                acc = np.mean(np.argmax(y_pred, axis=1) == y)
+                print(f"  Époque {epoch:>4} : loss = {loss:.4f}, accuracy = {acc:.2%}")
+
+# Test avec 3 classes
+np.random.seed(42)
+n_per_class = 100
+X = np.vstack([
+    np.random.randn(n_per_class, 2) + [0, 3],
+    np.random.randn(n_per_class, 2) + [3, -1],
+    np.random.randn(n_per_class, 2) + [-3, -1],
+])
+y = np.hstack([np.zeros(n_per_class), np.ones(n_per_class), 2*np.ones(n_per_class)]).astype(int)
+
+print("=== MLP Multi-Classes ===\n")
+model = MLPMultiClass([2, 32, 16, 3], lr=0.1)
+model.fit(X, y, epochs=500)
+print(f"\nAccuracy : {np.mean(np.argmax(model.forward(X), axis=1) == y):.2%}")
+```
