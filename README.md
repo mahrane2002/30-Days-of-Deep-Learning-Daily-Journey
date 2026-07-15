@@ -1791,3 +1791,52 @@ model = MLPMultiClass([2, 32, 16, 3], lr=0.1)
 model.fit(X, y, epochs=500)
 print(f"\nAccuracy : {np.mean(np.argmax(model.forward(X), axis=1) == y):.2%}")
 ```
+
+## 📅 Jour 14 — Batch Normalization
+
+### 📚 Concept Théorique
+
+La **Batch Normalization** normalise les activations pour stabiliser et accélérer l'entraînement.
+
+### 🧮 Formules
+
+$$\hat{x}_i = \frac{x_i - \mu_B}{\sqrt{\sigma_B^2 + \epsilon}} \qquad y_i = \gamma \hat{x}_i + \beta$$
+
+### 💻 Implémentation
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 14 : Batch Normalization
+# ============================================================
+
+class BatchNorm:
+    def __init__(self, n_features, momentum=0.9, epsilon=1e-5):
+        self.gamma = np.ones((1, n_features))
+        self.beta = np.zeros((1, n_features))
+        self.epsilon = epsilon
+        self.momentum = momentum
+        self.running_mean = np.zeros((1, n_features))
+        self.running_var = np.ones((1, n_features))
+    
+    def forward(self, x, training=True):
+        if training:
+            mean = np.mean(x, axis=0, keepdims=True)
+            var = np.var(x, axis=0, keepdims=True)
+            self.std = np.sqrt(var + self.epsilon)
+            self.x_norm = (x - mean) / self.std
+            self.running_mean = self.momentum * self.running_mean + (1 - self.momentum) * mean
+            self.running_var = self.momentum * self.running_var + (1 - self.momentum) * var
+        else:
+            self.x_norm = (x - self.running_mean) / np.sqrt(self.running_var + self.epsilon)
+        return self.gamma * self.x_norm + self.beta
+
+# Test
+np.random.seed(42)
+x = np.random.randn(32, 4) * 10 + 5
+bn = BatchNorm(4)
+x_norm = bn.forward(x)
+print("Avant : moyenne =", x.mean(axis=0).round(2), "| std =", x.std(axis=0).round(2))
+print("Après : moyenne =", x_norm.mean(axis=0).round(4), "| std =", x_norm.std(axis=0).round(4))
+```
