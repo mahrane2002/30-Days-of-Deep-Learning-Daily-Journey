@@ -1913,3 +1913,52 @@ print("\n💡 Normalization + Early Stopping = convergence rapide + bonne géné
 ```
 
 ---
+
+## 📅 Jour 16 — Optimiseurs : SGD, Momentum, RMSProp
+
+### 🧮 Formules
+
+**Momentum :**
+$$v_t = \beta \cdot v_{t-1} + (1 - \beta) \cdot g_t \qquad w_t = w_{t-1} - \alpha \cdot v_t$$
+
+**RMSProp :**
+$$s_t = \beta \cdot s_{t-1} + (1 - \beta) \cdot g_t^2 \qquad w_t = w_{t-1} - \frac{\alpha}{\sqrt{s_t + \epsilon}} \cdot g_t$$
+
+### 💻 Implémentation
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 16 : Optimiseurs
+# ============================================================
+
+class SGD:
+    def __init__(self, lr=0.01):
+        self.lr = lr
+    def update(self, params, grads):
+        for p, g in zip(params, grads):
+            p -= self.lr * g
+
+class SGDMomentum:
+    def __init__(self, lr=0.01, momentum=0.9):
+        self.lr, self.momentum = lr, momentum
+        self.velocities = None
+    def update(self, params, grads):
+        if self.velocities is None:
+            self.velocities = [np.zeros_like(p) for p in params]
+        for i, (p, g) in enumerate(zip(params, grads)):
+            self.velocities[i] = self.momentum * self.velocities[i] + (1 - self.momentum) * g
+            p -= self.lr * self.velocities[i]
+
+class RMSProp:
+    def __init__(self, lr=0.001, beta=0.999, epsilon=1e-8):
+        self.lr, self.beta, self.epsilon = lr, beta, epsilon
+        self.cache = None
+    def update(self, params, grads):
+        if self.cache is None:
+            self.cache = [np.zeros_like(p) for p in params]
+        for i, (p, g) in enumerate(zip(params, grads)):
+            self.cache[i] = self.beta * self.cache[i] + (1 - self.beta) * g ** 2
+            p -= self.lr * g / (np.sqrt(self.cache[i]) + self.epsilon)
+```
