@@ -2005,3 +2005,45 @@ class Adam:
 print("=== Adam : l'optimiseur par défaut du Deep Learning ===")
 print("Hyperparamètres standards : β₁=0.9, β₂=0.999, ε=1e-8, lr=0.001")
 ```
+
+## 📅 Jour 18 — Overfitting et Régularisation L2
+
+### 🧮 L2 Regularization (Weight Decay)
+
+$$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{data}} + \lambda \sum_i w_i^2$$
+
+### 💻 Implémentation
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 18 : Régularisation L2
+# ============================================================
+
+class RegularizedDense:
+    """Couche dense avec régularisation L2."""
+    
+    def __init__(self, n_in, n_out, l2_lambda=0.01):
+        self.W = np.random.randn(n_in, n_out) * np.sqrt(2.0 / n_in)
+        self.b = np.zeros((1, n_out))
+        self.l2_lambda = l2_lambda
+    
+    def forward(self, x):
+        self.input = x
+        return x @ self.W + self.b
+    
+    def backward(self, grad):
+        m = len(grad)
+        # Gradient normal + pénalité L2
+        self.dW = (self.input.T @ grad) / m + self.l2_lambda * self.W
+        self.db = np.mean(grad, axis=0, keepdims=True)
+        return grad @ self.W.T
+    
+    def l2_penalty(self):
+        return 0.5 * self.l2_lambda * np.sum(self.W ** 2)
+
+print("=== Régularisation L2 ===")
+print("λ petit (0.0001) : légère régularisation")
+print("λ grand (0.1)    : forte régularisation → poids forcés vers 0")
+```
