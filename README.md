@@ -2047,3 +2047,51 @@ print("=== Régularisation L2 ===")
 print("λ petit (0.0001) : légère régularisation")
 print("λ grand (0.1)    : forte régularisation → poids forcés vers 0")
 ```
+
+---
+
+## 📅 Jour 19 — Dropout
+
+### 🧠 Intuition
+
+Le **Dropout** éteint aléatoirement des neurones pendant l'entraînement → chaque neurone apprend à être **utile indépendamment** → réduit l'overfitting.
+
+### 🧮 Inverted Dropout
+
+$$\tilde{a}^{[l]} = \frac{a^{[l]} \odot \text{mask}}{p} \qquad \text{mask} \sim \text{Bernoulli}(p)$$
+
+### 💻 Implémentation
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 19 : Dropout
+# ============================================================
+
+class Dropout:
+    def __init__(self, keep_prob=0.8):
+        self.keep_prob = keep_prob
+        self.mask = None
+    
+    def forward(self, x, training=True):
+        if training:
+            self.mask = (np.random.rand(*x.shape) < self.keep_prob).astype(float)
+            return (x * self.mask) / self.keep_prob
+        return x
+    
+    def backward(self, grad_output):
+        return (grad_output * self.mask) / self.keep_prob
+
+# Démonstration
+np.random.seed(42)
+x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]])
+dropout = Dropout(keep_prob=0.6)
+
+print("=== Dropout ===\n")
+print(f"Entrée : {x}")
+for i in range(5):
+    out = dropout.forward(x, training=True)
+    print(f"  Essai {i+1} : {out.round(2)} (actifs: {dropout.mask.astype(int)})")
+print(f"\nInférence : {dropout.forward(x, training=False)}")
+```
