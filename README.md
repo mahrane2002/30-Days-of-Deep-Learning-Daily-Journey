@@ -1840,3 +1840,76 @@ x_norm = bn.forward(x)
 print("Avant : moyenne =", x.mean(axis=0).round(2), "| std =", x.std(axis=0).round(2))
 print("Après : moyenne =", x_norm.mean(axis=0).round(4), "| std =", x_norm.std(axis=0).round(4))
 ```
+
+## 📅 Jour 15 — MLP sur un Vrai Dataset
+
+### 📚 Bonnes Pratiques
+
+- **Normalisation des données** (StandardScaler)
+- **Split train/validation/test**
+- **Early stopping**
+
+### 💻 Implémentation
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 15 : MLP sur un vrai dataset avec bonnes pratiques
+# ============================================================
+
+class StandardScaler:
+    def fit(self, X):
+        self.mean = X.mean(axis=0)
+        self.std = X.std(axis=0) + 1e-8
+        return self
+    def transform(self, X):
+        return (X - self.mean) / self.std
+    def fit_transform(self, X):
+        return self.fit(X).transform(X)
+
+class EarlyStopping:
+    def __init__(self, patience=10):
+        self.patience = patience
+        self.best_loss = float('inf')
+        self.counter = 0
+    def should_stop(self, val_loss):
+        if val_loss < self.best_loss:
+            self.best_loss = val_loss
+            self.counter = 0
+            return False
+        self.counter += 1
+        return self.counter >= self.patience
+
+# Dataset : make_moons
+def make_moons(n_samples=1000, noise=0.1):
+    n = n_samples // 2
+    t1 = np.linspace(0, np.pi, n)
+    x1 = np.column_stack([np.cos(t1), np.sin(t1)])
+    t2 = np.linspace(0, np.pi, n)
+    x2 = np.column_stack([1-np.cos(t2), 1-np.sin(t2)-0.5])
+    X = np.vstack([x1, x2]) + np.random.randn(n_samples, 2) * noise
+    y = np.hstack([np.zeros(n), np.ones(n)])
+    perm = np.random.permutation(n_samples)
+    return X[perm], y[perm].reshape(-1, 1)
+
+np.random.seed(42)
+X, y = make_moons(1000, noise=0.15)
+
+# Split 60/20/20
+n = len(X)
+X_train, y_train = X[:600], y[:600]
+X_val, y_val = X[600:800], y[600:800]
+X_test, y_test = X[800:], y[800:]
+
+# Normaliser
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_val = scaler.transform(X_val)
+X_test = scaler.transform(X_test)
+
+print(f"Train: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
+print("\n💡 Normalization + Early Stopping = convergence rapide + bonne généralisation")
+```
+
+---
