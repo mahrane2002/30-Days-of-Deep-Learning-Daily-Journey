@@ -2145,3 +2145,50 @@ for name, sched in [('Step', StepDecay(0.1)), ('Cosine', CosineAnnealing(0.1)),
     print(f"{name:15s} : lr[0]={lrs[0]:.4f} → lr[50]={lrs[50]:.4f} → lr[99]={lrs[99]:.6f}")
 ```
 
+
+## 📅 Jour 21 — La Convolution 2D
+
+### 🧮 Formule
+
+$$\text{output}(i, j) = \sum_{m}\sum_{n} \text{input}(i+m, j+n) \cdot \text{kernel}(m, n) + \text{bias}$$
+
+$$\text{output\_size} = \frac{\text{input\_size} - \text{kernel\_size} + 2 \times \text{padding}}{\text{stride}} + 1$$
+
+### 💻 Implémentation
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 21 : Convolution 2D from scratch
+# ============================================================
+
+def convolve2d(image, kernel, stride=1, padding=0):
+    """Convolution 2D."""
+    if padding > 0:
+        image = np.pad(image, padding, mode='constant')
+    H, W = image.shape
+    kH, kW = kernel.shape
+    out_H = (H - kH) // stride + 1
+    out_W = (W - kW) // stride + 1
+    output = np.zeros((out_H, out_W))
+    for i in range(out_H):
+        for j in range(out_W):
+            region = image[i*stride:i*stride+kH, j*stride:j*stride+kW]
+            output[i, j] = np.sum(region * kernel)
+    return output
+
+# Filtres classiques
+kernel_horizontal = np.array([[ 1,  1,  1], [ 0,  0,  0], [-1, -1, -1]])
+kernel_vertical   = np.array([[ 1, 0, -1], [ 1, 0, -1], [ 1, 0, -1]])
+
+# Test
+image = np.zeros((8, 8))
+image[2:6, 2:6] = 1.0
+print("Image 8×8 avec carré central :")
+print(image)
+print("\nBords horizontaux détectés :")
+print(convolve2d(image, kernel_horizontal, padding=1))
+```
+
+---
