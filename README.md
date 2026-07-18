@@ -2095,3 +2095,53 @@ for i in range(5):
     print(f"  Essai {i+1} : {out.round(2)} (actifs: {dropout.mask.astype(int)})")
 print(f"\nInférence : {dropout.forward(x, training=False)}")
 ```
+
+---
+
+## 📅 Jour 20 — Learning Rate Scheduling
+
+### 🧮 Techniques
+
+**Cosine Annealing :**
+$$\alpha_t = \alpha_{\min} + \frac{1}{2}(\alpha_{\max} - \alpha_{\min})(1 + \cos(\frac{t}{T}\pi))$$
+
+### 💻 Implémentation
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ============================================================
+# JOUR 20 : Learning Rate Schedulers
+# ============================================================
+
+class StepDecay:
+    def __init__(self, initial_lr, drop_factor=0.5, drop_every=30):
+        self.initial_lr, self.drop_factor, self.drop_every = initial_lr, drop_factor, drop_every
+    def get_lr(self, epoch):
+        return self.initial_lr * (self.drop_factor ** (epoch // self.drop_every))
+
+class CosineAnnealing:
+    def __init__(self, initial_lr, min_lr=1e-6, total_epochs=100):
+        self.initial_lr, self.min_lr, self.total_epochs = initial_lr, min_lr, total_epochs
+    def get_lr(self, epoch):
+        return self.min_lr + 0.5 * (self.initial_lr - self.min_lr) * \
+               (1 + np.cos(epoch / self.total_epochs * np.pi))
+
+class WarmupCosine:
+    def __init__(self, initial_lr, warmup_epochs=10, total_epochs=100):
+        self.initial_lr, self.warmup, self.total = initial_lr, warmup_epochs, total_epochs
+    def get_lr(self, epoch):
+        if epoch < self.warmup:
+            return self.initial_lr * (epoch + 1) / self.warmup
+        progress = (epoch - self.warmup) / (self.total - self.warmup)
+        return self.initial_lr * 0.5 * (1 + np.cos(np.pi * progress))
+
+# Visualisation
+epochs = np.arange(100)
+for name, sched in [('Step', StepDecay(0.1)), ('Cosine', CosineAnnealing(0.1)),
+                     ('Warmup+Cosine', WarmupCosine(0.1))]:
+    lrs = [sched.get_lr(e) for e in epochs]
+    print(f"{name:15s} : lr[0]={lrs[0]:.4f} → lr[50]={lrs[50]:.4f} → lr[99]={lrs[99]:.6f}")
+```
+
