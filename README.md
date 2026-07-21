@@ -2192,3 +2192,63 @@ print(convolve2d(image, kernel_horizontal, padding=1))
 ```
 
 ---
+
+
+## 📅 Jour 22 — Convolution Multi-Canaux et Pooling
+
+### 💻 Implémentation
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 22 : Multi-Channel Convolution + Pooling
+# ============================================================
+
+def conv2d_multichannel(input_vol, kernels, biases, stride=1, padding=0):
+    """Convolution multi-canaux : (C_in, H, W) → (C_out, H', W')"""
+    C_in, H, W = input_vol.shape
+    C_out, _, kH, kW = kernels.shape
+    if padding > 0:
+        padded = np.pad(input_vol, ((0,0),(padding,padding),(padding,padding)), mode='constant')
+    else:
+        padded = input_vol
+    _, Hp, Wp = padded.shape
+    oH, oW = (Hp-kH)//stride+1, (Wp-kW)//stride+1
+    output = np.zeros((C_out, oH, oW))
+    for f in range(C_out):
+        for i in range(oH):
+            for j in range(oW):
+                region = padded[:, i*stride:i*stride+kH, j*stride:j*stride+kW]
+                output[f, i, j] = np.sum(region * kernels[f]) + biases[f]
+    return output
+
+def max_pool2d(input_vol, pool_size=2, stride=2):
+    """Max Pooling 2D."""
+    C, H, W = input_vol.shape
+    oH, oW = (H-pool_size)//stride+1, (W-pool_size)//stride+1
+    output = np.zeros((C, oH, oW))
+    for c in range(C):
+        for i in range(oH):
+            for j in range(oW):
+                output[c,i,j] = np.max(input_vol[c, i*stride:i*stride+pool_size,
+                                                     j*stride:j*stride+pool_size])
+    return output
+
+# Test
+np.random.seed(42)
+img = np.random.randn(3, 8, 8)
+kernels = np.random.randn(4, 3, 3, 3) * 0.1
+biases = np.zeros(4)
+
+conv_out = conv2d_multichannel(img, kernels, biases, padding=1)
+relu_out = np.maximum(0, conv_out)
+pool_out = max_pool2d(relu_out)
+
+print(f"Input:     {img.shape}")
+print(f"Conv(4×3×3): {conv_out.shape}")
+print(f"ReLU:      {relu_out.shape}")
+print(f"MaxPool:   {pool_out.shape}")
+```
+
+---
