@@ -2252,3 +2252,78 @@ print(f"MaxPool:   {pool_out.shape}")
 ```
 
 ---
+
+## 📅 Jour 23 — CNN Complet from Scratch
+
+### 💻 Implémentation
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 23 : CNN Complet
+# ============================================================
+
+class ConvLayer:
+    def __init__(self, n_filters, n_channels, kernel_size=3, padding=0):
+        self.padding = padding
+        self.n_filters = n_filters
+        self.ksize = kernel_size
+        fan_in = n_channels * kernel_size ** 2
+        self.kernels = np.random.randn(n_filters, n_channels, kernel_size, kernel_size) \
+                       * np.sqrt(2.0 / fan_in)
+        self.biases = np.zeros(n_filters)
+    
+    def forward(self, x):
+        self.input = x
+        B, C, H, W = x.shape
+        k, p = self.ksize, self.padding
+        if p > 0:
+            x = np.pad(x, ((0,0),(0,0),(p,p),(p,p)), mode='constant')
+        _, _, Hp, Wp = x.shape
+        oH, oW = Hp-k+1, Wp-k+1
+        out = np.zeros((B, self.n_filters, oH, oW))
+        for b in range(B):
+            for f in range(self.n_filters):
+                for i in range(oH):
+                    for j in range(oW):
+                        out[b,f,i,j] = np.sum(x[b,:,i:i+k,j:j+k] * self.kernels[f]) + self.biases[f]
+        return out
+
+class MaxPoolLayer:
+    def __init__(self, size=2, stride=2):
+        self.size, self.stride = size, stride
+    def forward(self, x):
+        B, C, H, W = x.shape
+        oH, oW = (H-self.size)//self.stride+1, (W-self.size)//self.stride+1
+        out = np.zeros((B, C, oH, oW))
+        for b in range(B):
+            for c in range(C):
+                for i in range(oH):
+                    for j in range(oW):
+                        hs, ws = i*self.stride, j*self.stride
+                        out[b,c,i,j] = np.max(x[b,c,hs:hs+self.size,ws:ws+self.size])
+        return out
+
+# Test
+batch = np.random.randn(2, 1, 16, 16)
+conv1 = ConvLayer(8, 1, 3, padding=1)
+pool1 = MaxPoolLayer()
+conv2 = ConvLayer(16, 8, 3, padding=1)
+pool2 = MaxPoolLayer()
+
+out = conv1.forward(batch)
+out = np.maximum(0, out)
+out = pool1.forward(out)
+out = conv2.forward(out)
+out = np.maximum(0, out)
+out = pool2.forward(out)
+flat = out.reshape(out.shape[0], -1)
+
+print(f"Input:  {batch.shape}")
+print(f"Conv1:  → Pool1 → Conv2 → Pool2")
+print(f"Output: {out.shape}")
+print(f"Flat:   {flat.shape} → prêt pour Dense layer")
+```
+
+---
