@@ -2327,3 +2327,67 @@ print(f"Flat:   {flat.shape} → prêt pour Dense layer")
 ```
 
 ---
+
+## 📅 Jour 24 — Backpropagation dans un CNN
+
+### 📚 Concept Clé
+
+Les gradients passent à travers la convolution et le pooling :
+- **Conv backward** : corrélation croisée pour `dW`, convolution complète pour `dX`
+- **Pool backward** : le gradient ne passe qu'à la position du max
+
+### 💻 Implémentation
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 24 : Backpropagation CNN
+# ============================================================
+
+class ConvWithBackward:
+    def __init__(self, n_filters, n_channels, kernel_size=3, padding=0):
+        self.padding, self.ksize = padding, kernel_size
+        fan_in = n_channels * kernel_size ** 2
+        self.kernels = np.random.randn(n_filters, n_channels, kernel_size, kernel_size) \
+                       * np.sqrt(2.0 / fan_in)
+        self.biases = np.zeros(n_filters)
+    
+    def forward(self, x):
+        self.input = x
+        B, C, H, W = x.shape
+        k, p = self.ksize, self.padding
+        self.padded = np.pad(x, ((0,0),(0,0),(p,p),(p,p)), mode='constant') if p > 0 else x
+        _, _, Hp, Wp = self.padded.shape
+        oH, oW = Hp-k+1, Wp-k+1
+        out = np.zeros((B, len(self.biases), oH, oW))
+        for b in range(B):
+            for f in range(len(self.biases)):
+                for i in range(oH):
+                    for j in range(oW):
+                        out[b,f,i,j] = np.sum(self.padded[b,:,i:i+k,j:j+k]*self.kernels[f]) + self.biases[f]
+        return out
+    
+    def backward(self, grad_out):
+        B, F, oH, oW = grad_out.shape
+        k = self.ksize
+        self.dkernels = np.zeros_like(self.kernels)
+        self.dbiases = np.zeros_like(self.biases)
+        grad_padded = np.zeros_like(self.padded)
+        for b in range(B):
+            for f in range(F):
+                for i in range(oH):
+                    for j in range(oW):
+                        region = self.padded[b,:,i:i+k,j:j+k]
+                        self.dkernels[f] += region * grad_out[b,f,i,j]
+                        self.dbiases[f] += grad_out[b,f,i,j]
+                        grad_padded[b,:,i:i+k,j:j+k] += self.kernels[f] * grad_out[b,f,i,j]
+        if self.padding > 0:
+            p = self.padding
+            return grad_padded[:,:,p:-p,p:-p]
+        return grad_padded
+
+print("✅ Backpropagation CNN implémentée !")
+```
+
+---
