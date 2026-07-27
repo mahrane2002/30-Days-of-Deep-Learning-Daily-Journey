@@ -2391,3 +2391,39 @@ print("✅ Backpropagation CNN implémentée !")
 ```
 
 ---
+
+## 📅 Jour 25 — Architectures CNN Célèbres
+
+### 🏛️ Architectures Historiques
+
+| Architecture | Année | Innovation clé | Paramètres |
+|---|---|---|---|
+| **LeNet-5** | 1998 | Premier CNN efficace | 60K |
+| **AlexNet** | 2012 | ReLU, Dropout, GPU | 60M |
+| **VGGNet** | 2014 | Filtres 3×3 empilés | 138M |
+| **GoogLeNet** | 2014 | Modules Inception | 7M |
+| **ResNet** | 2015 | Connexions résiduelles | 25M |
+
+### 💻 LeNet-5 et concept ResNet
+
+```python
+# ============================================================
+# JOUR 25 : Architectures célèbres
+# ============================================================
+
+print("=== LeNet-5 (1998) ===")
+print("Conv(6, 5×5) → Tanh → Pool → Conv(16, 5×5) → Tanh → Pool → Dense(120) → Dense(84) → Dense(10)")
+
+print("\n=== ResNet : Connexion Résiduelle ===")
+print("y = F(x) + x    ← skip connection")
+print("Permet d'entraîner des réseaux 100+ couches !")
+
+def residual_block(x, W1, W2):
+    """Block résiduel : le réseau apprend le résidu F(x) = H(x) - x"""
+    out = np.maximum(0, x @ W1)  # ReLU(Dense)
+    out = out @ W2                # Dense
+    out = out + x                 # ← Skip connection !
+    return np.maximum(0, out)     # ReLU
+```
+
+---
