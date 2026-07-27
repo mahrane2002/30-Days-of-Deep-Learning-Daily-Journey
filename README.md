@@ -2427,3 +2427,63 @@ def residual_block(x, W1, W2):
 ```
 
 ---
+
+## 📅 Jour 26 — Introduction à PyTorch
+
+### 💻 Code PyTorch
+
+```python
+import torch
+import torch.nn as nn
+
+# ============================================================
+# JOUR 26 : Introduction à PyTorch
+# ============================================================
+
+# --- 1. Tenseurs avec autograd ---
+a = torch.tensor([2.0, 3.0], requires_grad=True)
+b = torch.tensor([4.0, 5.0], requires_grad=True)
+c = a * b
+d = c.sum()
+d.backward()
+print(f"a.grad = {a.grad}")  # [4, 5]
+print(f"b.grad = {b.grad}")  # [2, 3]
+
+# --- 2. Premier modèle ---
+class SimpleNet(nn.Module):
+    def __init__(self, n_input, n_hidden, n_output):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_input, n_hidden),
+            nn.ReLU(),
+            nn.Linear(n_hidden, n_output),
+            nn.Sigmoid(),
+        )
+    def forward(self, x):
+        return self.net(x)
+
+# --- 3. Entraînement XOR ---
+X = torch.tensor([[0,0],[0,1],[1,0],[1,1]], dtype=torch.float32)
+y = torch.tensor([[0],[1],[1],[0]], dtype=torch.float32)
+
+model = SimpleNet(2, 32, 1)
+criterion = nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+for epoch in range(2000):
+    y_pred = model(X)
+    loss = criterion(y_pred, y)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    if epoch % 400 == 0:
+        acc = ((y_pred > 0.5).float() == y).float().mean()
+        print(f"  Époque {epoch:>4} : loss={loss.item():.4f}, acc={acc.item():.0%}")
+
+print("\nRésultat :")
+with torch.no_grad():
+    for i in range(4):
+        print(f"  {X[i].tolist()} → {model(X[i]).item():.4f} (attendu: {y[i].item():.0f})")
+```
+
+---
