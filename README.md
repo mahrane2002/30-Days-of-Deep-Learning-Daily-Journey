@@ -2487,3 +2487,44 @@ with torch.no_grad():
 ```
 
 ---
+
+## 📅 Jour 27 — MLP en PyTorch
+
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+
+# ============================================================
+# JOUR 27 : MLP complet en PyTorch
+# ============================================================
+
+class MLPClassifier(nn.Module):
+    def __init__(self, input_size, hidden_sizes, n_classes, dropout=0.3):
+        super().__init__()
+        layers = []
+        prev = input_size
+        for h in hidden_sizes:
+            layers.extend([
+                nn.Linear(prev, h),
+                nn.BatchNorm1d(h),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+            ])
+            prev = h
+        layers.append(nn.Linear(prev, n_classes))
+        self.network = nn.Sequential(*layers)
+        # He initialization
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
+    
+    def forward(self, x):
+        return self.network(x)
+
+# Usage
+model = MLPClassifier(2, [64, 32], 2, dropout=0.2)
+print(model)
+print(f"Paramètres : {sum(p.numel() for p in model.parameters()):,}")
+```
