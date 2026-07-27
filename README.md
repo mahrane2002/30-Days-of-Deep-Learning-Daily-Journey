@@ -2528,3 +2528,48 @@ model = MLPClassifier(2, [64, 32], 2, dropout=0.2)
 print(model)
 print(f"Paramètres : {sum(p.numel() for p in model.parameters()):,}")
 ```
+
+---
+
+## 📅 Jour 28 — CNN en PyTorch
+
+```python
+import torch
+import torch.nn as nn
+
+# ============================================================
+# JOUR 28 : CNN en PyTorch
+# ============================================================
+
+class CNN(nn.Module):
+    def __init__(self, n_classes=10):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(1, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(),
+            nn.Conv2d(32, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(),
+            nn.MaxPool2d(2), nn.Dropout2d(0.25),
+            
+            nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(),
+            nn.Conv2d(64, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(),
+            nn.MaxPool2d(2), nn.Dropout2d(0.25),
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64*7*7, 256), nn.BatchNorm1d(256), nn.ReLU(), nn.Dropout(0.5),
+            nn.Linear(256, n_classes),
+        )
+    def forward(self, x):
+        return self.classifier(self.features(x))
+
+model = CNN()
+print(model)
+print(f"\nParamètres : {sum(p.numel() for p in model.parameters()):,}")
+
+# Comparaison
+print("\n=== From Scratch vs PyTorch ===")
+print(f"{'Conv2d':15s} : ~30 lignes → 1 ligne")
+print(f"{'Backward':15s} : ~40 lignes → automatique")
+print(f"{'Adam':15s} : ~25 lignes → 1 ligne")
+```
+
+---
