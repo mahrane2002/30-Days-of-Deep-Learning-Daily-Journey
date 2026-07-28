@@ -2573,3 +2573,89 @@ print(f"{'Adam':15s} : ~25 lignes → 1 ligne")
 ```
 
 ---
+
+## 📅 Jour 29 — MNIST Classifier (NumPy From Scratch)
+
+```python
+import numpy as np
+
+# ============================================================
+# JOUR 29 : MNIST — Version NumPy (From Scratch)
+# ============================================================
+
+class MNISTClassifierNumPy:
+    """MLP pour MNIST : 784 → 256 → 128 → 10, tout en NumPy."""
+    
+    def __init__(self):
+        self.W1 = np.random.randn(784, 256) * np.sqrt(2.0 / 784)
+        self.b1 = np.zeros((1, 256))
+        self.W2 = np.random.randn(256, 128) * np.sqrt(2.0 / 256)
+        self.b2 = np.zeros((1, 128))
+        self.W3 = np.random.randn(128, 10) * np.sqrt(2.0 / 128)
+        self.b3 = np.zeros((1, 10))
+        self.params = [self.W1, self.b1, self.W2, self.b2, self.W3, self.b3]
+        self.m = [np.zeros_like(p) for p in self.params]
+        self.v = [np.zeros_like(p) for p in self.params]
+        self.t = 0
+    
+    def softmax(self, z):
+        e = np.exp(z - np.max(z, axis=1, keepdims=True))
+        return e / np.sum(e, axis=1, keepdims=True)
+    
+    def forward(self, X):
+        self.z1 = X @ self.W1 + self.b1
+        self.a1 = np.maximum(0, self.z1)
+        self.z2 = self.a1 @ self.W2 + self.b2
+        self.a2 = np.maximum(0, self.z2)
+        self.z3 = self.a2 @ self.W3 + self.b3
+        self.a3 = self.softmax(self.z3)
+        return self.a3
+    
+    def backward(self, X, y_onehot):
+        m = len(X)
+        dz3 = self.a3 - y_onehot
+        dW3 = self.a2.T @ dz3 / m
+        db3 = np.mean(dz3, axis=0, keepdims=True)
+        dz2 = (dz3 @ self.W3.T) * (self.z2 > 0)
+        dW2 = self.a1.T @ dz2 / m
+        db2 = np.mean(dz2, axis=0, keepdims=True)
+        dz1 = (dz2 @ self.W2.T) * (self.z1 > 0)
+        dW1 = X.T @ dz1 / m
+        db1 = np.mean(dz1, axis=0, keepdims=True)
+        self.grads = [dW1, db1, dW2, db2, dW3, db3]
+    
+    def adam_update(self, lr=0.001, b1=0.9, b2=0.999, eps=1e-8):
+        self.t += 1
+        self.params = [self.W1, self.b1, self.W2, self.b2, self.W3, self.b3]
+        for i in range(len(self.params)):
+            self.m[i] = b1*self.m[i] + (1-b1)*self.grads[i]
+            self.v[i] = b2*self.v[i] + (1-b2)*self.grads[i]**2
+            mh = self.m[i] / (1-b1**self.t)
+            vh = self.v[i] / (1-b2**self.t)
+            self.params[i] -= lr * mh / (np.sqrt(vh) + eps)
+        self.W1, self.b1, self.W2, self.b2, self.W3, self.b3 = self.params
+    
+    def train(self, X_train, y_train, X_test, y_test, epochs=20, batch_size=64, lr=0.001):
+        n = len(X_train)
+        for epoch in range(epochs):
+            perm = np.random.permutation(n)
+            for start in range(0, n, batch_size):
+                end = min(start+batch_size, n)
+                Xb, yb = X_train[perm[start:end]], y_train[perm[start:end]]
+                y_oh = np.zeros((len(yb), 10))
+                y_oh[np.arange(len(yb)), yb] = 1
+                self.forward(Xb)
+                self.backward(Xb, y_oh)
+                self.adam_update(lr)
+            
+            train_acc = np.mean(np.argmax(self.forward(X_train), axis=1) == y_train)
+            test_acc = np.mean(np.argmax(self.forward(X_test), axis=1) == y_test)
+            print(f"  Époque {epoch+1:>2}/{epochs} : train={train_acc:.2%}, test={test_acc:.2%}")
+
+print("=== MNIST Classifier — NumPy From Scratch ===")
+print("Architecture : 784 → 256 (ReLU) → 128 (ReLU) → 10 (Softmax)")
+print("Optimiseur   : Adam")
+print("→ Accuracy attendue : ~97-98% 🎯")
+```
+
+---
