@@ -2659,3 +2659,79 @@ print("→ Accuracy attendue : ~97-98% 🎯")
 ```
 
 ---
+
+## 📅 Jour 30 — MNIST Classifier (PyTorch)
+
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+
+# ============================================================
+# JOUR 30 : MNIST — Version PyTorch
+# ============================================================
+
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Dataset
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.1307,), (0.3081,)),
+])
+train_data = datasets.MNIST('./data', train=True, download=True, transform=transform)
+test_data = datasets.MNIST('./data', train=False, transform=transform)
+train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
+test_loader = DataLoader(test_data, batch_size=64)
+
+# Modèle CNN
+class MNISTNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(1, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(),
+            nn.Conv2d(32, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(),
+            nn.MaxPool2d(2), nn.Dropout2d(0.25),
+            nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(),
+            nn.Conv2d(64, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(),
+            nn.MaxPool2d(2), nn.Dropout2d(0.25),
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64*7*7, 256), nn.BatchNorm1d(256), nn.ReLU(), nn.Dropout(0.5),
+            nn.Linear(256, 10),
+        )
+    def forward(self, x):
+        return self.classifier(self.features(x))
+
+model = MNISTNet().to(DEVICE)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+
+# Entraînement
+for epoch in range(15):
+    model.train()
+    for Xb, yb in train_loader:
+        Xb, yb = Xb.to(DEVICE), yb.to(DEVICE)
+        loss = criterion(model(Xb), yb)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+    scheduler.step()
+    
+    # Évaluation
+    model.eval()
+    correct = total = 0
+    with torch.no_grad():
+        for Xb, yb in test_loader:
+            Xb, yb = Xb.to(DEVICE), yb.to(DEVICE)
+            correct += (model(Xb).argmax(1) == yb).sum().item()
+            total += len(yb)
+    print(f"  Époque {epoch+1:>2}/15 : test_acc = {correct/total:.2%}")
+
+print("\n🏆 Accuracy finale attendue : ~99%+ !")
+```
+
+---
